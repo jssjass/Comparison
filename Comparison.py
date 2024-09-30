@@ -1,100 +1,115 @@
 import random
+import threading
+import queue
+import time
+
+# Очереди для обмена данными между потоками
+input_queue = queue.Queue()
+output_queue = queue.Queue()
+calculation_queue = queue.Queue()
 
 def input_arrays():
-    """Запрашивает у пользователя ввод данных для двух массивов.
-
-    Возвращает:
-        tuple: Кортеж из двух списков, содержащих элементы первого и второго массива,
-        преобразованные в целые числа.
-    """
+    """Запрашивает у пользователя ввод данных для двух массивов."""
     array1 = input("Введите элементы первого массива через пробел: ")
     array2 = input("Введите элементы второго массива через пробел: ")
 
-    # Преобразуем строку в список чисел
     array1 = list(map(int, array1.split()))
     array2 = list(map(int, array2.split()))
-    return array1, array2
-
+    input_queue.put((array1, array2))
 
 def generate_arrays(size=5, range_start=0, range_end=10):
-    """Генерирует два массива случайных целых чисел.
-
-    Параметры:
-        size (int): Размер массивов (по умолчанию 5).
-        range_start (int): Начальное значение для генерации случайных чисел (по умолчанию 0).
-        range_end (int): Конечное значение для генерации случайных чисел (по умолчанию 10).
-
-    Возвращает:
-        tuple: Кортеж из двух списков, содержащих случайные целые числа.
-    """
+    """Генерирует два массива случайных целых чисел."""
     array1 = [random.randint(range_start, range_end) for _ in range(size)]
     array2 = [random.randint(range_start, range_end) for _ in range(size)]
-    return array1, array2
-
-
-def display_menu():
-    """Отображает главное меню программы."""
-    print("\nГлавное меню:")
-    print("1: Ввод исходных данных вручную")
-    print("2: Генерация исходных данных случайным образом")
-    print("3: Выполнение алгоритма")
-    print("4: Завершение работы программы")
-
+    input_queue.put((array1, array2))
+    output_queue.put(f"Сгенерированы массивы:\nМассив 1: {array1}\nМассив 2: {array2}")
 
 def check_common_numbers(array1, array2):
-    """Проверяет наличие общих чисел между двумя массивами.
-
-    Параметры:
-        array1 (list): Первый массив.
-        array2 (list): Второй массив.
-
-    Возвращает:
-        int: Количество общих чисел, включая перевернутые.
-    """
+    """Проверяет наличие общих чисел между двумя массивами."""
     common_count = 0
-    reversed_array2 = [int(str(num)[::-1]) for num in array2]  # Переворачиваем числа во втором массиве
+    reversed_array2 = [int(str(num)[::-1]) for num in array2]
 
-    # Проверяем, сколько чисел из первого массива встречаются во втором (или его перевернутом)
     for num in array1:
         if num in array2 or num in reversed_array2:
             common_count += 1
 
-    return common_count
+    output_queue.put(f"Количество общих чисел (включая перевернутые): {common_count}")
 
+def calculation_thread():
+    """Поток для выполнения вычислений."""
+    while True:
+        task = calculation_queue.get()
+        if task == "exit":
+            break
+        array1, array2 = task
+        check_common_numbers(array1, array2)
+        calculation_queue.task_done()
+
+def input_thread():
+    """Поток для обработки пользовательского ввода."""
+    while True:
+        task = input_queue.get()
+        if task == "exit":
+            break
+        if task == "manual":
+            input_arrays()
+        elif task == "generate":
+            generate_arrays()
+        input_queue.task_done()
+
+def output_thread():
+    """Поток для вывода результатов."""
+    while True:
+        message = output_queue.get()
+        if message == "exit":
+            break
+        print(message)
+        output_queue.task_done()
 
 def main():
     """Главная функция программы, управляющая логикой работы."""
+    # Запуск потоков
+    threading.Thread(target=calculation_thread, daemon=True).start()
+    threading.Thread(target=input_thread, daemon=True).start()
+    threading.Thread(target=output_thread, daemon=True).start()
+
     array1 = []
     array2 = []
-    results_processed = False  # Флаг для проверки, были ли обработаны данные
+    results_processed = False
 
     while True:
-        display_menu()
+        print("\nГлавное меню:")
+        print("1: Ввод исходных данных вручную")
+        print("2: Генерация исходных данных случайным образом")
+        print("3: Выполнение алгоритма")
+        print("4: Завершение работы программы")
+
         choice = input("Выберите пункт меню (1-4): ")
 
         if choice == '1':
-            array1, array2 = input_arrays()
-            results_processed = False  # Сбрасываем флаг при вводе новых данных
+            input_queue.put("manual")
+            array1, array2 = input_queue.get()
+            results_processed = False
 
         elif choice == '2':
-            array1, array2 = generate_arrays()
-            print("Сгенерированы массивы:")
-            print("Массив 1:", array1)
-            print("Массив 2:", array2)
-            results_processed = False  # Сбрасываем флаг при генерации новых массивов
+            input_queue.put("generate")
+            array1, array2 = input_queue.get()
+            results_processed = False
 
         elif choice == '3':
             if not array1 or not array2:
                 print("Ошибка: Для выполнения алгоритма необходимо ввести исходные данные!")
-                continue  # Пропускаем итерацию, если данные не введены
+                continue
 
-            common_count = check_common_numbers(array1, array2)
-            print(f"Количество общих чисел (включая перевернутые): {common_count}")
-            results_processed = True  # Устанавливаем флаг, что результаты обработаны
+            calculation_queue.put((array1, array2))
+            results_processed = True
 
         elif choice == '4':
             print("Завершение работы программы.")
-            break  # Выходим из цикла и заканчиваем программу
+            input_queue.put("exit")
+            calculation_queue.put("exit")
+            output_queue.put("exit")
+            break
 
         else:
             print("Ошибка: Неверный выбор. Пожалуйста, выберите пункт меню от 1 до 4.")
@@ -102,6 +117,8 @@ def main():
         if results_processed:
             print("Результаты были выведены, введите новые данные для сброса результатов.")
 
+        # Небольшая задержка, чтобы дать время другим потокам обработать данные
+        time.sleep(0.1)
 
 if __name__ == "__main__":
     main()
