@@ -34,3 +34,42 @@ def check_common_numbers(array1, array2):
             common_count += 1
 
     return common_count
+
+def main():
+    array1 = []
+    array2 = []
+    results_processed = False  # Флаг для проверки, были ли обработаны данные
+
+    while True:
+        display_menu()
+        choice = input("Выберите пункт меню (1-4): ")
+
+        if choice == '1':
+            array1, array2 = input_arrays()
+            results_processed = False  # Сбрасываем флаг при вводе новых данных
+
+        elif choice == '2':
+            array1, array2 = generate_arrays()
+            print("Сгенерированы массивы:")
+            print("Массив 1:", array1)
+            print("Массив 2:", array2)
+            results_processed = False  # Сбрасываем флаг при генерации новых массивов
+
+        elif choice == '3':
+            if not array1 or not array2:
+                print("Ошибка: Для выполнения алгоритма необходимо ввести исходные данные!")
+                continue  # Пропускаем итерацию, если данные не введены
+
+            common_count = check_common_numbers(array1, array2)
+            print(f"Количество общих чисел (включая перевернутые): {common_count}")
+            results_processed = True  # Устанавливаем флаг, что результаты обработаны
+
+        elif choice == '4':
+            print("Завершение работы программы.")
+            break  # Выходим из цикла и заканчиваем программу
+
+        else:
+            print("Ошибка: Неверный выбор. Пожалуйста, выберите пункт меню от 1 до 4.")
+
+        if results_processed:
+            print("Результаты были выведены, введите новые данные для сброса результатов.")
