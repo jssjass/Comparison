@@ -22,3 +22,15 @@ def display_menu():
     print("2: Генерация исходных данных случайным образом")
     print("3: Выполнение алгоритма")
     print("4: Завершение работы программы")
+
+# Функция для проверки общих чисел
+def check_common_numbers(array1, array2):
+    common_count = 0
+    reversed_array2 = [int(str(num)[::-1]) for num in array2]  # Переворачиваем числа во втором массиве
+
+    # Проверяем, сколько чисел из первого массива встречаются во втором (или его перевернутом)
+    for num in array1:
+        if num in array2 or num in reversed_array2:
+            common_count += 1
+
+    return common_count
